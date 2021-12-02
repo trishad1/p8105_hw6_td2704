@@ -1,0 +1,17 @@
+---
+title: "P8105 Homework 6 [td2704]"
+output: github_document
+---
+
+
+```{r, echo=FALSE, message=FALSE}
+
+library(tidyverse)
+library(dplyr)
+
+```
+
+## Problem 1
+
+
+
