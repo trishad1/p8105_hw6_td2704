@@ -13,5 +13,86 @@ library(dplyr)
 
 ## Problem 1
 
+```{r}
+
+birthweight_df = read_csv('data/birthweight.csv')
+
+birthweight_data = 
+  birthweight_df %>%
+  janitor::clean_names()  %>%
+  mutate(
+    babysex = as.factor(babysex),
+    babysex = fct_recode(babysex, "male" = "1", "female" = "2"),
+    frace = as.factor(frace),
+    frace = fct_recode(frace, "white" = "1", "black" = "2", 
+                       "asian" = "3", "puerto_rican" = "4",
+                       "other" = "8"), # "unknown" = "9"
+    mrace = as.factor(mrace),
+    mrace = fct_recode(mrace, "white" = "1", "black" = "2", 
+                       "asian" = "3", "puerto_rican" = "4"), # "other" = "8"
+    # malform = as.factor(malform),
+    # malform = fct_recode(malform, "absent" = "0", "present" = "1")
+    malform = as.logical(malform)
+  )
+
+birthweight_data
+
+```
+
+Above, birthweight_data is a cleaned version of the original data with columns babysex, frace,  and mrace turned into factors and column malform turned into a logical ("absent" = "0"/FALSE, "present" = "1"/TRUE).
+
+
+```{r}
+
+colnames(birthweight_data)[colSums(is.na(birthweight_data)) > 0] 
+
+```
+
+This line above shows that none of the columns have missing values.
+
+Propose a regression model for birthweight. 
+
+My hypothesized structure for the factors that underly birthweight: \
+babysex - difference in average birthweight by sex, \
+blength - larger length = larger birthweight, \
+fincome - higher income = healthier food = larger birthweight, \
+malform - weight-related malformations, \
+wtgain - mother's weight gain could be correlated, \
+gaweeks - gestational age could be correlated
+
+So my linear model will take into account these factors as individual variables to see which variables have the highest correlation.
+
+```{r}
+fit = lm(bwt ~ babysex + blength + fincome + malform + wtgain + gaweeks, data = birthweight_data)
+
+fit %>% 
+  broom::tidy()
+
+```
+
+Show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
+
+```{r}
+
+birthweight_data %>%
+  modelr::add_predictions(fit) %>%
+  modelr::add_residuals(fit) %>%
+  ggplot(aes(x = pred, y = resid)) + geom_point() +
+  ggtitle("Model residuals vs fitted values of birthweight")
+
+```
+
+Let's compare the above model to the following: \
+(1) One using length at birth and gestational age as predictors (main effects only). \
+(2) One using head circumference, length, sex, and all interactions (including the three-way interaction) between these.
+
+Model (1) One using length at birth and gestational age as predictors (main effects only):
+
+```{r}
+
+
+
+```
+
 
 
