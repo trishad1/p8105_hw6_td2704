@@ -142,7 +142,164 @@ The above plot shows RMSE prediction errors on the test data for each of the thr
 As we can see from the plot above, the second suggested model with all interactions of head circumference, length, and sex had the lowest prediction error. My hypothesized model has slightly lower error than the first suggested model, but the second suggested model seems to be the best model among the three for predicting birthweight.
 
 
+## Problem 2
+
+First load the data.
+
+```{r}
+
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2017-01-01",
+    date_max = "2017-12-31") %>%
+  mutate(
+    name = recode(id, USW00094728 = "CentralPark_NY"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) %>%
+  select(name, id, everything())
+
+weather_df
+
+```
+
+Write the boot_sample function to randomly sample with replacement as done in class.
+
+```{r}
+boot_sample = function(df) {
+  sample_frac(df, replace = TRUE)
+}
+```
+
+Apply this function to weather_df for 5000 samples.
+
+```{r}
+
+boot_straps = 
+  data_frame(
+    strap_number = 1:5000,
+    strap_sample = rerun(5000, boot_sample(weather_df))
+  )
+
+boot_straps
+
+```
+
+Get estimates for BO (intercept), B1 (tmin coefficient), and R.squared.
+
+```{r}
+
+bootstrap_results = 
+  boot_straps %>% 
+  mutate(
+    models = map(strap_sample, ~lm(tmax ~ tmin, data = .x) ),
+    results = map(models, broom::tidy)) %>% 
+  select(-strap_sample, -models) %>% 
+  unnest(results) 
+
+bootstrap_results
+
+```
+
+```{r}
+
+bootstrap_results2 = 
+  boot_straps %>% 
+  mutate(
+    models = map(strap_sample, ~lm(tmax ~ tmin, data = .x) ),
+    results = map(models, broom::glance)) %>% 
+  select(-strap_sample, -models) %>% 
+  unnest(results) 
+
+bootstrap_results2
+```
+
+Plot the distribution of your estimates, and describe these in words.
+
+```{r}
+
+bootstrap_results2 %>%
+  ggplot(aes(x=strap_number,y=r.squared)) +
+  geom_point() +
+  ggtitle("R^2 estimates")
+
+bootstrap_results2 %>%
+  ggplot(aes(x=r.squared)) +
+  geom_histogram() +
+  ggtitle("R^2 estimates")
+
+```
+
+From the plots above, we can see that R^2 seems to be normally distributed around 0.91/0.915.
 
 
+```{r}
+bootstrap_results %>% 
+  select(strap_number, term, estimate) %>%
+  pivot_wider(
+    names_from = term,
+    values_from = estimate
+  ) %>%
+  rename("B0" = "(Intercept)") %>%
+  rename("B1" = "tmin") %>%
+  mutate(
+    logB0B1 = log(B0*B1)
+  ) %>%
+  ggplot(aes(x=strap_number,y=logB0B1)) +
+  geom_point() +
+  ggtitle("log(B0*B1) estimates")
 
+bootstrap_results %>% 
+  select(strap_number, term, estimate) %>%
+  pivot_wider(
+    names_from = term,
+    values_from = estimate
+  ) %>%
+  rename("B0" = "(Intercept)") %>%
+  rename("B1" = "tmin") %>%
+  mutate(
+    logB0B1 = log(B0*B1)
+  ) %>%
+  ggplot(aes(x=logB0B1)) +
+  geom_histogram() +
+  ggtitle("log(B0*B1) estimates")
+```
+
+From the plots above, we can see that log(B0*B1) seems to be normally distributed around 2.01.
+
+
+Identify the 2.5% and 97.5% quantiles to provide a 95% confidence interval.
+
+R.squared confidence interval:
+
+```{r}
+
+bootstrap_results2 %>% 
+  summarize(
+    ci_lower = quantile(r.squared, 0.025), 
+    ci_upper = quantile(r.squared, 0.975)) %>%
+  knitr::kable()
+
+```
+
+log(B0*B1) confidence interval:
+
+```{r}
+bootstrap_results %>% 
+  select(strap_number, term, estimate) %>%
+  pivot_wider(
+    names_from = term,
+    values_from = estimate
+  ) %>%
+  rename("B0" = "(Intercept)") %>%
+  rename("B1" = "tmin") %>%
+  mutate(
+    logB0B1 = log(B0*B1)
+  ) %>%
+  summarize(
+    ci_lower = quantile(logB0B1, 0.025), 
+    ci_upper = quantile(logB0B1, 0.975)) %>%
+  knitr::kable()
+```
 
